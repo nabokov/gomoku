@@ -9,7 +9,6 @@ public final class ViterbiNode {
     public final short length;
     public final short posId;
     public final boolean isSpace;
-    public int finerSplitLevel; 
     
     public ViterbiNode(int start, short length, short wordCost, short posId, boolean isSpace) {
         this.cost = wordCost;
@@ -18,8 +17,6 @@ public final class ViterbiNode {
         this.length = length;
         this.posId = posId;
         this.isSpace = isSpace;
-
-        this.finerSplitLevel = 0;
     }
 
     public static ViterbiNode makeBOSEOS() {
@@ -27,16 +24,13 @@ public final class ViterbiNode {
     }
     
     public String toString() {
-      String str = "";
-      for (int i = 0; i < finerSplitLevel; i++) str += " ";
-      str +=
+      String str = 
           "[" + this.getClass().getSimpleName()
           + " start:" + start
           + " lengh:" + length
           + " posId:" + posId
           + (prev != null ? " link cost:" + Matrix.linkCost(prev.posId, posId) : "")
           + " acc cost:" + cost
-          + " level:" + finerSplitLevel
           + "]";
       return str;
     }

@@ -9,7 +9,6 @@ public final class WordDic {
     }
 
     public static void search(String text, int start, Callback fn) {
-        //System.out.println("  [search WordDic]");
         SurfaceId.eachCommonPrefix(text, start, fn);
     }
 

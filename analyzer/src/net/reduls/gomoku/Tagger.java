@@ -61,6 +61,11 @@ public final class Tagger {
 	return result;
     }
 
+    /**
+     * create lattice
+     * @param text
+     * @return
+     */
     public static ViterbiNodeList[] makeLattice(String text) {
 	final int len = text.length();
 	final ViterbiNodeList[] nodesAry = new ViterbiNodeList[len+1];
@@ -79,6 +84,12 @@ public final class Tagger {
 	return nodesAry;
     }
 
+    /**
+     * extract optimal path from the created lattice
+     * @param nodesAry
+     * @param usedPaths
+     * @return
+     */
     public static ViterbiNode extractPath(ViterbiNodeList[] nodesAry, HashSet<ViterbiNode> usedPaths) {
 	int len = nodesAry.length - 1;
 
@@ -95,44 +106,34 @@ public final class Tagger {
 		cur = cur.next;
 	    }
 	}
-	/*
-	if (doFinerSplit) {
-	    ViterbiNode cur = tail.prev;
-	    while (cur.prev != null) {
-		cur = injectFinerSplit(cur.prev, cur, nodesAry);
-		cur = cur.prev;
-	    }
-	}
-	 */
+
 	return head; 
     }
-    
-    // update all ViterbiNode's temporary variables (current path, current level, etc.)
+
+    /**
+     * update ViterbiNode's temporary variables in accordance to current path of interest
+     * 
+     * @param tail : tail of the path
+     * @return  : head node of the path. traversable via node.next
+     */
     private static ViterbiNode setReversePath(ViterbiNode tail) {
 	ViterbiNode cur = tail;
 	while(cur.prev != null) {
-	    cur.finerSplitLevel = 0;
 	    cur.prev.next = cur;
-
 	    cur = cur.prev;
 	}
 	return cur;
     }
-    
-    private static ViterbiNode reverseNodes(ViterbiNode tail) {
-	ViterbiNode head = null;
-	ViterbiNode cur = tail;
-	while(cur.prev != null) {
-	    final ViterbiNode tmp = cur.prev;
-	    cur.prev = head;
-	    head = cur;
-	    cur = tmp;
-	}
-	return head;
-    }
 
+    /**
+     * further split current node into finer morphs, and inject corresponding nodes into current path
+     * 
+     * @param left : 
+     * @param currentNode
+     * @param nodesAry
+     * @return
+     */
     private static ViterbiNode injectFinerSplit(ViterbiNode left, ViterbiNode currentNode, ViterbiNodeList[] nodesAry) {
-	// split current morph further 
 	final int rightPos = currentNode.start + currentNode.length;
 	final int costLowerBound = currentNode.cost;
 	final int costUpperBound = (int)(costLowerBound * finerSplitThreshold);
@@ -140,35 +141,6 @@ public final class Tagger {
 	ViterbiNode[] nextMincostSegment = findNextMincostSegment(currentNode, nodesAry[rightPos], costLowerBound, costUpperBound);
 	ViterbiNode nextMinCostHead = nextMincostSegment[0];
 	ViterbiNode nextMinCostTail = nextMincostSegment[1];
-	
-	/*
-	//System.out.println(nodesAry.length);
-	//System.out.println(nodesAry[rightPos]);
-
-	ViterbiNode nextMinCostNode = null;
-	int nextMinCost = costUpperBound;
-	for (int i = 0; i < nodesAry[rightPos].size(); i++) {
-	    final ViterbiNode p = nodesAry[rightPos].get(i);
-	    if (p.cost < nextMinCost
-		    && p.cost >= costLowerBound
-		    && p != currentNode
-		    && p.length < currentNode.length) {
-
-		//System.out.println(" (checking: "+p.toString());
-
-		// check if this segment actually divides the current morph
-		ViterbiNode tmp2 = p;
-		int segmentLength = p.length;
-		while (segmentLength < currentNode.length && tmp2.prev != null) {
-		    tmp2 = tmp2.prev;
-		    segmentLength += tmp2.length;
-		}
-		if (segmentLength != currentNode.length) continue;
-
-		nextMinCost = p.cost;
-		nextMinCostNode = p;
-	    }
-	}*/
 
 	if (nextMinCostTail != null) { //found
 	    currentNode.prev.next = nextMinCostHead;
@@ -177,21 +149,23 @@ public final class Tagger {
 	    ViterbiNode p = nextMinCostTail;
 	    while (p != nextMinCostHead.prev) {
 		p.next = tmp;
-		p.finerSplitLevel++;
-
 		tmp = p;
 		p = p.prev;
 	    }
-	    
-	    /*	    nextMinCostHead.prev = currentNode.prev;
-	    currentNode.prev = nextMinCostTail;
-	    
-	    for (ViterbiNode p = nextMinCostTail; p != nextMinCostHead.prev; p = p.prev) p.finerSplitLevel++;*/
 	}
 	    
 	return currentNode;
     }
 
+    /**
+     * find a minimum cost path that further splits the current morpheme
+     * 
+     * @param currentNode : node to be splitted
+     * @param prevs : cost matrix for the current position 
+     * @param costLowerBound : cost should be equal or more than this value
+     * @param costUpperBound : cost should not exceed this value
+     * @return : [head, tail] nodes of the path, if found 
+     */
     private static ViterbiNode[] findNextMincostSegment(ViterbiNode currentNode, ViterbiNodeList prevs, int costLowerBound, int costUpperBound) {
 	int nextMinCost = costUpperBound;
 	ViterbiNode nextMinCostTail = null;
@@ -205,8 +179,6 @@ public final class Tagger {
 		    && p.cost >= costLowerBound
 		    && p != currentNode
 		    && p.length < currentNode.length) {
-
-		//System.out.println(" (checking: "+p.toString());
 
 		// check if this segment actually divides the current morph
 		ViterbiNode tmp2 = p;
@@ -227,13 +199,19 @@ public final class Tagger {
 	return rtn;
     }
     
+    /**
+     * selects and sets the previous node which forms the minimum cost path.
+     * will avoid nodes in usedPath set when provided. (used for n-best).
+     *  
+     * @param vn : node to update its prev attribute
+     * @param prevs : candidate previous node set
+     * @param usedPaths : (optional) nodes to exclude
+     * @return vn
+     */
     private static ViterbiNode setMincostNode(ViterbiNode vn, ViterbiNodeList prevs) {
 	return setMincostNode(vn, prevs, null);
     }
     private static ViterbiNode setMincostNode(ViterbiNode vn, ViterbiNodeList prevs, HashSet<ViterbiNode> usedPaths) {
-	//final ViterbiNode f = vn.prev = prevs.get(0);
-	//int minCost = f.cost + Matrix.linkCost(f.posId, vn.posId);
-	
 	ViterbiNode minCostNode = null;
 	int minCost = -1;
 	for(int i=0; i < prevs.size(); i++) {

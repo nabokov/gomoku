@@ -6,7 +6,6 @@ public final class Unknown {
     private static final Char.Category space = Char.category(' ');
     
     public static void search(String text, int start, WordDic.Callback fn) {
-        //System.out.println("  [search unknown]");
         final char ch = text.charAt(start);
         final Char.Category ct = Char.category(ch);
         
