@@ -3,7 +3,11 @@ package net.reduls.gomoku.dic;
 public final class ViterbiNode {
     public int cost;
     public ViterbiNode prev = null;
-    public ViterbiNode next = null;
+    
+    // this is not a reverse link of "prev", rather, it is a temporary link that
+    // represents a specific path of current interest.
+    // may change time to time, and may not be an optimal path while -nbest or -fine is in effect. 
+    public ViterbiNode next = null; 
     
     public final int start;
     public final short length;

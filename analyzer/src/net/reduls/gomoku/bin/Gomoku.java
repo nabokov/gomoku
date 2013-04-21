@@ -9,25 +9,22 @@ public final class Gomoku {
     public static void main(String[] args) throws IOException {
 	boolean doWakati = false;
 	boolean doCount = false;
-	boolean doFinerSplit = false;
-	int finerSplitDepth = 1;
-	double finerSplitThreshold = 2.0;
-	int nBest = 0;
 	
         for (int i = 0; i < args.length; i++) {
             if (args[i].equals("-wakati")) {  doWakati = true; }
             else if (args[i].equals("-count")) { doCount = true; }
+            else if (args[i].equals("-verbose")) { Tagger.verbose = true; }
             else if (args[i].equals("-fine")) {
-        	doFinerSplit = true;
-        	if (args.length > i+1 && !args[i+1].startsWith("-")) {
-        	    finerSplitDepth = Integer.parseInt(args[++i]);
-        	}
-        	if (args.length > i+1 && !args[i+1].startsWith("-")) {
-        	    finerSplitThreshold = Double.parseDouble(args[++i]);
-        	}
+        	Tagger.doFinerSplit = true;
+        	if (args.length > i+1 && !args[i+1].startsWith("-"))
+        	    Tagger.finerSplitDepth = Integer.parseInt(args[++i]);
+        	if (args.length > i+1 && !args[i+1].startsWith("-"))
+        	    Tagger.finerSplitThreshold = Double.parseDouble(args[++i]);
+            	if (args.length > i+1 && !args[i+1].startsWith("-"))
+        	    Tagger.finerSplitLengthAdjust = Double.parseDouble(args[++i]);
             }
             else if (args[i].equals("-nbest") && args.length > i+1 && !args[i+1].startsWith("-")) {
-        	nBest = Integer.parseInt(args[++i]);
+        	Tagger.nBest = Integer.parseInt(args[++i]);
             }
             else {
         	System.err.println("Usage: java net.reduls.igo.bin.Gomoku [-wakati] [-count] [-fine [DEPTH] [THRESHOLD]] [-nbest N]");
@@ -49,14 +46,6 @@ public final class Gomoku {
 		System.out.println("");
 	    }
 	} else {
-	    if (doFinerSplit) {
-		Tagger.doFinerSplit = true;
-		Tagger.finerSplitDepth = finerSplitDepth;
-		Tagger.finerSplitThreshold = finerSplitThreshold;
-	    }
-	    if (nBest > 0) {
-		Tagger.nBest = nBest;
-	    }
 	    for(String s=rl.read(); s != null; s=rl.read()) {
 		for(Morpheme m : Tagger.parse(s))
 		    System.out.println(m.surface+"\t"+m.feature);

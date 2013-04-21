@@ -14,8 +14,11 @@ public final class Tagger {
 
     public static boolean doFinerSplit = false;
     public static double finerSplitThreshold = 2.0;
+    public static double finerSplitLengthAdjust = 0.0; // penalize short morphs 
     public static int finerSplitDepth = 1;
+
     public static int nBest = 1;
+    public static boolean verbose = false;
 
     private static final ViterbiNodeList BOS_NODES = new ViterbiNodeList();
     static {
@@ -31,7 +34,7 @@ public final class Tagger {
 	
 	HashSet<ViterbiNode> usedPaths = (nBest > 1 ? new HashSet<ViterbiNode>() : null);
 	for (int n = 0; n < nBest; n++) {
-	    System.out.println("nBest:"+n);
+	    if (verbose) System.out.println("nBest:"+n);
 	    
 	    ViterbiNode head = extractPath(nodesAry, usedPaths);
 	    if (head == null) break;
@@ -42,7 +45,7 @@ public final class Tagger {
 		final String feature = PartsOfSpeech.get(vn.posId);
 		result.add(new Morpheme(surface, feature, vn.start));
 
-		System.out.println(vn.toString());
+		if (verbose) System.out.println(vn.toString());
 	    }
 	}
 	return result;
@@ -74,8 +77,6 @@ public final class Tagger {
 
 	MakeLattice fn = new MakeLattice(nodesAry);
 	for(int i=0; i < len; i++) {
-	    //System.out.println("parseImpl loop len="+i);
-
 	    if(nodesAry[i] != null) {
 		fn.set(i);
 		WordDic.search(text, i, fn);
@@ -142,7 +143,7 @@ public final class Tagger {
 	final int costLowerBound = currentNode.cost;
 	final int costUpperBound = (int)(costLowerBound * finerSplitThreshold);
 
-	System.out.println(" search segment : depth="+(finerSplitDepth-depth)+" pos=["+currentNode.start+","+(currentNode.start+currentNode.length)+"] cost=["+costLowerBound+" < x < "+costUpperBound+"]");
+	if (verbose) System.out.println(" search segment : depth="+(finerSplitDepth-depth)+" pos=["+currentNode.start+","+(currentNode.start+currentNode.length)+"] cost=["+costLowerBound+" < x < "+costUpperBound+"]");
 
 	ViterbiNode[] nextMincostSegment = findNextMincostSegment(currentNode, nodesAry[rightPos], costLowerBound, costUpperBound);
 	ViterbiNode nextMinCostHead = nextMincostSegment[0];
@@ -176,7 +177,7 @@ public final class Tagger {
      * @return : [head, tail] nodes of the path, if found 
      */
     private static ViterbiNode[] findNextMincostSegment(ViterbiNode currentNode, ViterbiNodeList prevs, int costLowerBound, int costUpperBound) {
-	int nextMinCost = costUpperBound;
+	double nextMinCost = costUpperBound;
 	ViterbiNode nextMinCostTail = null;
 	ViterbiNode nextMinCostHead = null;
 
@@ -188,21 +189,27 @@ public final class Tagger {
 		    && p.length < currentNode.length) {
 
 		// check if this segment actually divides the current morph
+		// and also adjust the cost taking the length of each morphs in account
+
 		ViterbiNode tmp2 = p;
 		int segmentLength = p.length;
+		double adjustedCost = p.cost * (1.0 + finerSplitLengthAdjust / p.length); //(1.0 + finerSplitLengthAdjust / (p.length*p.length));
 		while (segmentLength < currentNode.length && tmp2.prev != null) {
 		    tmp2 = tmp2.prev;
 		    segmentLength += tmp2.length;
+		    adjustedCost *= (1.0 + finerSplitLengthAdjust / tmp2.length);//(1.0 + finerSplitLengthAdjust / (tmp2.length*tmp2.length));
 		}
-		if (segmentLength != currentNode.length) continue;
+		if (segmentLength != currentNode.length
+			|| tmp2.prev != currentNode.prev // little more strict constraint - should connect to the same morph as original) continue;
+			|| adjustedCost > nextMinCost) continue;
 
-		nextMinCost = p.cost;
+		nextMinCost = adjustedCost;
 		nextMinCostTail = p;
 		nextMinCostHead = tmp2;
 	    }
 	}
 
-	if (nextMinCostTail != null) { System.out.println("   found : ->"+nextMinCostTail.toString()); }
+	if (verbose && nextMinCostTail != null) { System.out.println("   found : ->"+nextMinCostTail.toString()); }
 
 	ViterbiNode[] rtn = { nextMinCostHead, nextMinCostTail };
 	return rtn;
@@ -240,9 +247,9 @@ public final class Tagger {
 	
 	    if (usedPaths != null) usedPaths.add(minCostNode);
 	    
-	    System.out.println("    setMincostNode:"+vn.toString());
+	    if (verbose) System.out.println("    setMincostNode:"+vn.toString());
 	} else {
-	    System.out.println("    setMincostNode: no more available nodes");
+	    if (verbose) System.out.println("    setMincostNode: no more available nodes");
 	}
 	
 	return vn;
@@ -266,7 +273,6 @@ public final class Tagger {
 	}
 
 	public void call(ViterbiNode vn) {
-	    //System.out.println("    MakeLattice.call vitterbinode="+vn.toString());
 	    empty=false;
 
 	    final int end = i+vn.length;
