@@ -9,11 +9,13 @@ public final class WordDic {
     }
 
     public static void search(String text, int start, Callback fn) {
+        //System.out.println("  [search WordDic]");
         SurfaceId.eachCommonPrefix(text, start, fn);
     }
 
     public static void eachViterbiNode(Callback fn, int surfaceId, 
                                        int start, int length, boolean isSpace) {
+        //System.out.println("  eachVitterbiNode: start="+start+" length="+length);
         int[] mis = Morpheme.getMorphemes(surfaceId);
         for(int i=0; i < mis.length; i++)
             fn.call(new ViterbiNode(start, (short)length,
