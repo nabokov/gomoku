@@ -29,8 +29,6 @@ public final class SurfaceId {
         int id = idOffset;
         
         for(int i=start;; i++) {
-          //System.out.println(" eachCommonPrefix loop i="+i);
-
             if(isTerminal(node))
                 WordDic.eachViterbiNode(fn, id++, start, i-start, false);
             

@@ -14,6 +14,7 @@ public final class Tagger {
 
     public static boolean doFinerSplit = false;
     public static double finerSplitThreshold = 2.0;
+    public static int finerSplitDepth = 1;
     public static int nBest = 1;
 
     private static final ViterbiNodeList BOS_NODES = new ViterbiNodeList();
@@ -86,7 +87,7 @@ public final class Tagger {
 
     /**
      * extract optimal path from the created lattice
-     * @param nodesAry
+     * @param nodesAry : lattice
      * @param usedPaths
      * @return
      */
@@ -95,14 +96,14 @@ public final class Tagger {
 
 	ViterbiNode tail = ViterbiNode.makeBOSEOS();
 	setMincostNode(tail, nodesAry[len], usedPaths);
-	if (tail.prev == null) return null; // paths exausted
+	if (tail.prev == null) return null; // paths exhausted
 
 	ViterbiNode head = setReversePath(tail);
 	
 	if (doFinerSplit) {
 	    ViterbiNode cur = head.next;
 	    while (cur.next != null) {
-		injectFinerSplit(cur.prev, cur, nodesAry);
+		injectFinerSplit(cur.prev, cur, nodesAry, finerSplitDepth);
 		cur = cur.next;
 	    }
 	}
@@ -128,15 +129,20 @@ public final class Tagger {
     /**
      * further split current node into finer morphs, and inject corresponding nodes into current path
      * 
-     * @param left : 
-     * @param currentNode
-     * @param nodesAry
+     * @param left : left(prev) node of the current node
+     * @param currentNode : node to further split
+     * @param nodesAry : lattice
+     * @param depth : number of recursive splits
      * @return
      */
-    private static ViterbiNode injectFinerSplit(ViterbiNode left, ViterbiNode currentNode, ViterbiNodeList[] nodesAry) {
+    private static ViterbiNode injectFinerSplit(ViterbiNode left, ViterbiNode currentNode, ViterbiNodeList[] nodesAry, int depth) {
+	if (currentNode.length == 1) return currentNode; // for efficiency
+	
 	final int rightPos = currentNode.start + currentNode.length;
 	final int costLowerBound = currentNode.cost;
 	final int costUpperBound = (int)(costLowerBound * finerSplitThreshold);
+
+	System.out.println(" search segment : depth="+(finerSplitDepth-depth)+" pos=["+currentNode.start+","+(currentNode.start+currentNode.length)+"] cost=["+costLowerBound+" < x < "+costUpperBound+"]");
 
 	ViterbiNode[] nextMincostSegment = findNextMincostSegment(currentNode, nodesAry[rightPos], costLowerBound, costUpperBound);
 	ViterbiNode nextMinCostHead = nextMincostSegment[0];
@@ -149,6 +155,9 @@ public final class Tagger {
 	    ViterbiNode p = nextMinCostTail;
 	    while (p != nextMinCostHead.prev) {
 		p.next = tmp;
+		
+		if (depth > 1) injectFinerSplit(p.prev, p, nodesAry, depth - 1);
+		
 		tmp = p;
 		p = p.prev;
 	    }
@@ -171,8 +180,6 @@ public final class Tagger {
 	ViterbiNode nextMinCostTail = null;
 	ViterbiNode nextMinCostHead = null;
 
-	System.out.println(" search segment: right pos=["+currentNode.start+","+(currentNode.start+currentNode.length)+"] cost=["+costLowerBound+" < x < "+costUpperBound+"]");
-
 	for (int i = 0; i < prevs.size(); i++) {
 	    final ViterbiNode p = prevs.get(i);
 	    if (p.cost < nextMinCost
@@ -194,6 +201,8 @@ public final class Tagger {
 		nextMinCostHead = tmp2;
 	    }
 	}
+
+	if (nextMinCostTail != null) { System.out.println("   found : ->"+nextMinCostTail.toString()); }
 
 	ViterbiNode[] rtn = { nextMinCostHead, nextMinCostTail };
 	return rtn;

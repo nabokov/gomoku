@@ -10,6 +10,7 @@ public final class Gomoku {
 	boolean doWakati = false;
 	boolean doCount = false;
 	boolean doFinerSplit = false;
+	int finerSplitDepth = 1;
 	double finerSplitThreshold = 2.0;
 	int nBest = 0;
 	
@@ -19,6 +20,9 @@ public final class Gomoku {
             else if (args[i].equals("-fine")) {
         	doFinerSplit = true;
         	if (args.length > i+1 && !args[i+1].startsWith("-")) {
+        	    finerSplitDepth = Integer.parseInt(args[++i]);
+        	}
+        	if (args.length > i+1 && !args[i+1].startsWith("-")) {
         	    finerSplitThreshold = Double.parseDouble(args[++i]);
         	}
             }
@@ -26,7 +30,7 @@ public final class Gomoku {
         	nBest = Integer.parseInt(args[++i]);
             }
             else {
-        	System.err.println("Usage: java net.reduls.igo.bin.Gomoku [-wakati] [-count] [-fine [THRESHOLD]] [-nbest N]");
+        	System.err.println("Usage: java net.reduls.igo.bin.Gomoku [-wakati] [-count] [-fine [DEPTH] [THRESHOLD]] [-nbest N]");
         	System.exit(1);
             }
 	}
@@ -47,6 +51,7 @@ public final class Gomoku {
 	} else {
 	    if (doFinerSplit) {
 		Tagger.doFinerSplit = true;
+		Tagger.finerSplitDepth = finerSplitDepth;
 		Tagger.finerSplitThreshold = finerSplitThreshold;
 	    }
 	    if (nBest > 0) {
