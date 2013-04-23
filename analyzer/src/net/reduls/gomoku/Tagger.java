@@ -13,9 +13,9 @@ public final class Tagger {
     static class ViterbiNodeList extends ArrayList<ViterbiNode> {}
 
     public static boolean doFinerSplit = false;
-    public static double finerSplitThreshold = 2.0;
+    public static double finerSplitThreshold = 1.5;
     public static double finerSplitLengthAdjust = 0.0; // penalize short morphs 
-    public static int finerSplitDepth = 1;
+    public static int finerSplitDepth = 2;
 
     public static int nBest = 1;
     public static boolean verbose = false;
@@ -156,8 +156,10 @@ public final class Tagger {
 	if (currentNode.length == 1) return currentNode; // for efficiency
 	
 	final int rightPos = currentNode.start + currentNode.length;
+	final int currentNodeCostAlone = currentNode.cost - currentNode.prev.cost;
 	final int costLowerBound = currentNode.cost;
-	final int costUpperBound = (int)(costLowerBound * finerSplitThreshold);
+	final int costUpperBound = costLowerBound
+		+ (int)((currentNodeCostAlone >= 0 ? currentNodeCostAlone : currentNodeCostAlone*-1) * (finerSplitThreshold - 1.0));
 
 	if (verbose) System.out.println(" search segment : depth="+(finerSplitDepth-depth)+" pos=["+currentNode.start+","+(currentNode.start+currentNode.length)+"] cost=["+costLowerBound+" < x < "+costUpperBound+"]");
 
