@@ -47,6 +47,7 @@ public final class Tagger {
 
 		if (verbose) System.out.println(vn.toString());
 	    }
+	    cleanupNextLinks(head);
 	}
 	return result;
     }
@@ -62,6 +63,8 @@ public final class Tagger {
 	//for(ViterbiNode vn=head; vn!=null; vn=vn.next) // include EOS/BOS
 	for(ViterbiNode vn=head.next; vn.next!=null; vn=vn.next) // skip EOS/BOS
 	    result.add(text.substring(vn.start, vn.start+vn.length));
+	
+	cleanupNextLinks(head);
 	return result;
     }
 
@@ -128,13 +131,26 @@ public final class Tagger {
     }
 
     /**
+     * reset *.next to null 
+     * @param head
+     */
+    private static void cleanupNextLinks(ViterbiNode head) {
+	ViterbiNode cur = head;
+	while (cur != null) {
+	    ViterbiNode tmp = cur.next;
+	    cur.next = null;
+	    cur = tmp;
+	}
+    }
+    
+    /**
      * further split current node into finer morphs, and inject corresponding nodes into current path
      * 
      * @param left : left(prev) node of the current node
      * @param currentNode : node to further split
      * @param nodesAry : lattice
      * @param depth : number of recursive splits
-     * @return
+     * @return : head of the new finer segment
      */
     private static ViterbiNode injectFinerSplit(ViterbiNode left, ViterbiNode currentNode, ViterbiNodeList[] nodesAry, int depth) {
 	if (currentNode.length == 1) return currentNode; // for efficiency
@@ -157,14 +173,14 @@ public final class Tagger {
 	    while (p != nextMinCostHead.prev) {
 		p.next = tmp;
 		
-		if (depth > 1) injectFinerSplit(p.prev, p, nodesAry, depth - 1);
-		
 		tmp = p;
+		if (depth > 1) tmp = injectFinerSplit(p.prev, p, nodesAry, depth - 1);
+		
 		p = p.prev;
 	    }
 	}
 	    
-	return currentNode;
+	return (nextMinCostHead != null ? nextMinCostHead : currentNode); 
     }
 
     /**
@@ -200,7 +216,7 @@ public final class Tagger {
 		    adjustedCost *= (1.0 + finerSplitLengthAdjust / tmp2.length);//(1.0 + finerSplitLengthAdjust / (tmp2.length*tmp2.length));
 		}
 		if (segmentLength != currentNode.length
-			|| tmp2.prev != currentNode.prev // little more strict constraint - should connect to the same morph as original) continue;
+			|| tmp2.prev != currentNode.prev // should connect to the same morph as original
 			|| adjustedCost > nextMinCost) continue;
 
 		nextMinCost = adjustedCost;
